@@ -1,0 +1,144 @@
+% The Mathematics and Algorithms of Texas Hold'em Poker
+% Author: Cathy Li — compiled with Tectonic
+\documentclass[11pt,a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{adjustbox}
+\usepackage{enumitem}
+\usepackage{needspace}
+\usepackage[ruled,vlined,linesnumbered]{algorithm2e}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage{fancyhdr}
+
+% hyperref ALWAYS last among content packages
+\usepackage[
+    colorlinks=true,
+    linkcolor=linknavy,
+    citecolor=darkgray,
+    urlcolor=linknavy,
+    bookmarks=true,
+    bookmarksnumbered=true,
+    unicode=true
+]{hyperref}
+
+\geometry{a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm}
+
+% Orphan/widow control
+\widowpenalty=10000
+\clubpenalty=10000
+
+% Allow slightly stretched interword spacing instead of overfull lines
+\setlength{\emergencystretch}{3em}
+
+\definecolor{linknavy}{RGB}{28,62,95}
+\definecolor{accent}{RGB}{46,93,78}
+\definecolor{boxbg}{RGB}{240,244,242}
+\definecolor{rulegray}{RGB}{120,120,120}
+
+% Theorem environments
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{example}{Example}[section]
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+
+% Algorithm styling
+\SetAlFnt{\small}
+\SetAlCapFnt{\small}
+\SetAlCapNameFnt{\small}
+
+% Caption and float separation: captions, tables, and figures must sit
+% clearly off the surrounding text and off each other
+\setlength{\abovecaptionskip}{12pt}
+\setlength{\belowcaptionskip}{16pt}
+\setlength{\textfloatsep}{26pt plus 4pt minus 2pt}
+\setlength{\intextsep}{24pt plus 4pt minus 2pt}
+\setlength{\floatsep}{18pt plus 2pt minus 2pt}
+% Airier table rows
+\renewcommand{\arraystretch}{1.22}
+
+\makeatletter
+% Float pages: content starts at the top of the page (no vertical centering),
+% fixed separation between stacked floats, leftover space at the bottom.
+\setlength{\@fptop}{0pt}
+\setlength{\@fpsep}{24pt}
+\setlength{\@fpbot}{0pt plus 1fil}
+\makeatother
+
+% Footer with an author stamp so the compiled document is always
+% identifiable on every page (page number on the right).
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[L]{\footnotesize\color{rulegray}Cathy Li \textperiodcentered\ September 14, 2026}
+\fancyfoot[R]{\footnotesize\thepage}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\setlength{\footskip}{32pt}
+
+% Compact quotation of inline math operators
+\DeclareMathOperator{\E}{\mathbb{E}}
+\DeclareMathOperator{\Var}{\mathrm{Var}}
+\DeclareMathOperator{\SE}{\mathrm{SE}}
+\DeclareMathOperator{\br}{\mathrm{BR}}
+\newcommand{\eq}{e}
+
+\hypersetup{
+    pdftitle={The Mathematics and Algorithms of Texas Hold'em Poker: From Card Probabilities to Superhuman Play},
+    pdfauthor={Cathy Li},
+    pdfsubject={Game theory, artificial intelligence, and probability in poker},
+    pdfkeywords={Texas Hold'em, poker, Nash equilibrium, counterfactual regret minimization, Monte Carlo, reinforcement learning, game theory}
+}
+
+\begin{document}
+
+% ============ Title block (no cover page) ============
+\begin{center}
+    {\LARGE\bfseries The Mathematics and Algorithms of\\[2pt] Texas Hold'em Poker\par}
+    \vspace{6pt}
+    {\large From Card Probabilities to Superhuman Play\par}
+    \vspace{14pt}
+    {\normalsize Cathy Li\par}
+    \vspace{4pt}
+    {\small September 2026\par}
+    \vspace{10pt}
+    {\color{rulegray}\rule{0.72\textwidth}{0.5pt}\par}
+\end{center}
+\vspace{4pt}
+
+\begin{abstract}
+\noindent
+Texas Hold'em is the most strategically rich form of poker played at scale and, for the same reason, has served for three decades as the canonical testbed for decision making under uncertainty. This paper presents a self-contained treatment of the mathematical and algorithmic principles that underpin strong play. We begin with the combinatorial and probabilistic foundations of the game: hand frequencies, equity, pot odds, expected value, and the variance structure that dominates short-term results. We then develop the algorithmic toolkit in increasing order of sophistication: rule-based expert systems driven by hand strength, position, and pot odds; Monte Carlo equity estimators whose accuracy decays as $1/\sqrt{n}$; game-theoretic formulations of imperfect-information games in extensive form; counterfactual regret minimization (CFR) and its sampling and function-approximation variants, including CFR$+$ and Deep CFR; and reinforcement-learning approaches culminating in the superhuman systems DeepStack, Libratus, and Pluribus. We accompany the theory with a concrete implementation---a No-Limit Hold'em engine with five AI paradigms sharing one table---and report a 100{,}000-hand simulation study quantifying how the paradigms' win rates, aggression, and showdown statistics differ in practice. Throughout, emphasis is placed on rigorous statements, convergence guarantees, and the engineering compromises---state abstraction, action abstraction, and equilibrium approximation---that make theory tractable in a game whose full tree contains more game states than there are atoms in the observable universe.
+\end{abstract}
+
+\vspace{2pt}
+\noindent\textbf{Keywords:} Texas Hold'em; imperfect-information games; Nash equilibrium; counterfactual regret minimization; Monte Carlo methods; reinforcement learning; abstraction.
+
+\vspace{8pt}
+{\small\tableofcontents}
+\clearpage
+
+\input{sections/01-introduction}
+\input{sections/02-game}
+\input{sections/03-probability}
+\input{sections/04-evaluation}
+\input{sections/05-gametheory}
+\input{sections/06-cfr}
+\input{sections/07-rl}
+\input{sections/08-experiments}
+\input{sections/09-conclusion}
+
+\input{sections/refs}
+
+\end{document}

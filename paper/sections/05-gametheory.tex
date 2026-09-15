@@ -1,0 +1,98 @@
+% !TeX root = ../main.tex
+\section{Game-Theoretic Foundations}\label{sec:gametheory}
+
+\subsection{Extensive-form games with imperfect information}\label{sec:efg}
+
+The correct formal model for poker is a finite extensive-form game with imperfect information. It consists of:
+\begin{enumerate}[leftmargin=1.6em,itemsep=1pt]
+\item a finite game tree rooted at $h_0$; internal nodes $h$ belong to a player-mapping $P: H \to N \cup \{c\}$, where $N = \{1, \dots, n\}$ are the players and $c$ is the chance player;
+\item chance nodes prescribe probability $\sigma_c(h, a)$ to each child $h \cdot a$ (in Hold'em, uniform over the unseen cards);
+\item payoffs $u_i: Z \to \mathbb{R}$ at terminal nodes $z \in Z$ (in Hold'em, chip deltas);
+\item for each player $i$, a partition $\mathcal{I}_i$ of that player's decision nodes into \emph{information sets} $I$: nodes in one $I$ are indistinguishable to $i$ because they differ only in information $i$ cannot observe (opponents' cards).
+\end{enumerate}
+A player's memory of its own past observations is encoded by the partition: the game has \emph{perfect recall} if, whenever two nodes $h, h'$ lie in the same information set of player $i$, the sequence of $i$'s information sets and actions leading to $h$ and to $h'$ is identical---informally, the player never forgets what it once knew or did. All poker variants have perfect recall, which matters because of Kuhn's theorem: with perfect recall, behavioural strategies (independent action distributions at each information set) are payoff-equivalent to mixed strategies (distributions over deterministic plans), and the two representations can be interchanged freely~\cite{kuhn1953extensive}. Every algorithm in this paper therefore operates on behavioural strategies $\sigma_i$, which assign to each $I \in \mathcal{I}_i$ a distribution over the actions legal at $I$.
+
+The number of information sets is the true measure of a poker game's size. Heads-up limit Hold'em has about $10^{17}$ of them; heads-up no-limit, on the order of $10^{160}$ counting distinct bet sizes; six-player no-limit is larger still~\cite{sandholm2015abstraction}. Any tabular method that touches each information set once is hopeless at this scale---a fact that drives every abstraction decision in Section~\ref{sec:cfr}.
+
+\subsection{Nash equilibrium and its guarantees}\label{sec:nash}
+
+A strategy profile $\sigma = (\sigma_1, \dots, \sigma_n)$ is a \emph{Nash equilibrium} if no player gains by unilateral deviation: for every $i$ and every alternative $\sigma_i'$,
+\begin{equation}\label{eq:nash}
+u_i(\sigma_i', \sigma_{-i}) \;\le\; u_i(\sigma).
+\end{equation}
+Nash's theorem guarantees that every finite game has at least one such profile (in mixed strategies; with perfect recall, in behavioural strategies)~\cite{nash1950equilibrium}. The concept's computational meaning for two-player \emph{zero-sum} games is sharper. Define a player's \emph{best response} value $\br_i(\sigma_{-i}) = \max_{\sigma_i'} u_i(\sigma_i', \sigma_{-i})$ and the \emph{exploitability} of a profile by
+\begin{equation}\label{eq:expl}
+\varepsilon(\sigma) \;=\; \tfrac12\!\left[\br_1(\sigma_2) - \br_2(\sigma_1)\right] \;=\; \tfrac12\!\left[\max_{\sigma_1'} u_1(\sigma_1', \sigma_2) - \min_{\sigma_2'} u_1(\sigma_1, \sigma_2')\right],
+\end{equation}
+which vanishes exactly at equilibrium. Two consequences make equilibrium play the reference standard for competitive poker AI. First, by von Neumann's minimax theorem the zero-sum game has a \emph{value} $v^*$: any equilibrium profile attains it, player~1 can guarantee at least $v^*$ against \emph{any} opponent, and player~2 can hold any opponent to at most $v^*$. A maximally unexploitable strategy is therefore also a maximally safe one. Second, approximate equilibria inherit approximate safety: if $\varepsilon(\sigma) \le \epsilon$, then a best response against $\sigma$ earns at most $v^* + \epsilon$, \emph{regardless of the exploiter's knowledge or adaptivity}. This is the formal licence to search for $\epsilon$-equilibria of abstracted games and treat the result as robust---the licence under which Cepheus, Libratus, and Pluribus were built~\cite{bowling2015ceph,brown2017libratus,brown2019pluribus}.
+
+Beyond two players these guarantees dissolve. With three or more players the game is no longer zero-sum (one player's loss is not another's gain), equilibrium values are not interchangeable, and some equilibria are collusively bad for individual players: in a six-player game, a strategy that is a best response to one profile of opponents can lose heavily against a different profile of the \emph{same strength}. Equilibrium strategy in multiplayer poker is therefore a \emph{robustness heuristic}---a guarantee against being the table's designated victim---rather than an optimality certificate. This is exactly how Pluribus was evaluated and is why the six-agent study of Section~\ref{sec:experiments} reports pairwise-style aggregate statistics rather than exploitability~\cite{brown2019pluribus}.
+
+\subsection{Why perfect-information methods fail}
+
+Backward induction on a game tree requires evaluating nodes; a node's value is well-defined only when the evaluator can condition on everything the mover knows. In poker the mover's knowledge is coarser than the tree: two nodes in one information set demand one action distribution yet differ in continuation values, because the hidden cards alter every downstream payoff. Any procedure that solves subtrees independently---alpha--beta search, expectimax, dynamic programming over the tree---silently conditions on the hidden state and thereby assumes the mover can read opponents' cards. The result is a strategy whose apparent value is an unreachable upper bound, and whose realised value against a live opponent collapses: a ``best strategy against known cards'' bluffs never and folds to every raise.
+
+The failure has a constructive side: the correct equilibrium behaviour in imperfect-information games is generally \emph{mixed}. The trivial game rock--paper--scissors (a one-move simultaneous game) makes the point irreducibly: any deterministic strategy is exploited with certainty, and the unique equilibrium randomises uniformly over the three actions. Poker differs only in that the mixing probabilities are non-obvious, card-dependent, and coupled across a vast tree. The next example shows that even in the smallest poker game the mixing probabilities obey exact arithmetic that no intuition produces unaided.
+
+\subsection{A complete worked example: Kuhn poker}\label{sec:kuhn}
+
+Kuhn poker is the smallest game recognisably belonging to the poker family~\cite{kuhn1953extensive}. The deck has three cards $J < Q < K$; each player antes one unit and receives one card; bet size is fixed at one unit. Player~1 (P1) acts first and may check or bet; if P1 bets, P2 calls or folds; if P1 checks, P2 checks (showdown) or bets, whereupon P1 calls or folds. The game has 12 information sets---six per player (one per card at the first decision, one per card at the second)---and can be solved exactly.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  chn/.style={circle, draw, fill=boxbg, inner sep=1.5pt, minimum size=9pt},
+  p1n/.style={circle, draw, thick, inner sep=1.5pt, minimum size=9pt},
+  p2n/.style={rectangle, draw, thick, rounded corners=2pt, inner sep=3pt},
+  term/.style={circle, draw, fill=rulegray, inner sep=0pt, minimum size=4.5pt},
+  lab/.style={font=\footnotesize, midway, sloped, above=8pt, inner sep=0.5pt},
+  nlab/.style={font=\footnotesize, inner sep=1pt},
+  arr/.style={-{Stealth[length=4.5pt]}, rulegray}
+]
+  % ---------------- nodes (generously spaced coordinates) ----------------
+  \node[chn] (root) at (0,0) {};
+  \node[nlab, left=7pt of root] {$c$};
+  \node[p1n] (p1) at (0,-1.6) {};
+  \node[p2n] (p2k) at (-4.2,-3.2) {P2};
+  \node[p2n] (p2b) at (2.8,-3.2) {P2};
+  \node[p1n] (p1c) at (-1.6,-4.9) {};
+  \node[term] (t1) at (-6.8,-4.9) {};
+  \node[term] (t4) at (1.4,-4.9) {};
+  \node[term] (t5) at (4.4,-4.9) {};
+  \node[term] (t2) at (-3.6,-6.6) {};
+  \node[term] (t3) at (-0.2,-6.6) {};
+  % information-set labels, each placed in a verified clear zone
+  \node[nlab] at (-1.1,-1.05) {P1: \{J\}\{Q\}\{K\}};
+  \node[nlab] at (-0.4,-4.55) {P1: \{J\}\{Q\}\{K\}};
+  % payoff labels, attached below their terminal dots
+  \node[nlab, below=6pt of t1] {showdown $\pm 1$};
+  \node[nlab, below=6pt of t2] {$-1$ to P1};
+  \node[nlab, below=6pt of t3] {showdown $\pm 2$};
+  \node[nlab, below=6pt of t4] {$+1$ to P1};
+  \node[nlab, below=6pt of t5] {showdown $\pm 2$};
+  % ---------------- edges ----------------
+  \draw[arr] (root) -- node[font=\footnotesize, inner sep=0.5pt, right=8pt, pos=0.55] {deal} (p1);
+  \draw[arr] (p1) -- node[lab] {check} (p2k);
+  \draw[arr] (p1) -- node[lab] {bet} (p2b);
+  \draw[arr] (p2k) -- node[lab] {check} (t1);
+  \draw[arr] (p2k) -- node[lab] {bet} (p1c);
+  \draw[arr] (p1c) -- node[lab] {fold} (t2);
+  \draw[arr] (p1c) -- node[lab] {call} (t3);
+  \draw[arr] (p2b) -- node[lab] {fold} (t4);
+  \draw[arr] (p2b) -- node[lab] {call} (t5);
+\end{tikzpicture}
+\caption{The Kuhn poker tree (card-deal branches and per-card information sets suppressed; each decision node shown aggregates three information sets, one per private card). Both players see only their own card, so every decision aggregates three indistinguishable deals.}
+\label{fig:kuhntree}
+\end{figure}
+
+\begin{proposition}[Kuhn~\cite{kuhn1953extensive}]\label{prop:kuhn}
+The value of Kuhn poker to Player~1 is $v^{*} = -1/18$. Moreover the equilibria form a one-parameter family: for every bluffing rate $\alpha \in (0, \tfrac13]$ the following profile is an equilibrium, and every equilibrium restricts to this form:
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+\item \textbf{P1}: bet the jack (bluff) with probability $\alpha$; bet the king with probability $3\alpha$; always check the queen; facing a bet after checking, fold the jack, call with the queen at the indifference rate, always call with the king;
+\item \textbf{P2}: facing a bet, fold the jack, call with the queen with probability $\tfrac13$, always call with the king; after a check, bluff the jack with probability $\tfrac13$, always check the queen, always bet the king.
+\end{itemize}
+\end{proposition}
+
+Three features deserve emphasis, because they scale unchanged to full poker. First, \emph{the value is negative for the first player}: acting first is a disadvantage worth $1/18 \approx 5.6\%$ of the ante per hand, a positional tax that persists (in larger magnitude) in Hold'em and explains why seat selection matters. Second, \emph{bluffing is mandatory and exactly priced}: P1 bluffs the worst hand at rate $\alpha$ but must bet the best hand at rate $3\alpha$, so that a bet is a bluff exactly one quarter of the time---precisely the pot odds P2 faces when calling one unit into a pot of three ($b/(P+b) = 1/4$ in \eqref{eq:potodds}). At this ratio, and only at this ratio, P2's queen is indifferent between calling and folding; if P1 bluffs more, calling profits, and if less, folding profits. The equilibrium mixing probabilities are not free parameters of psychology but \emph{arithmetic consequences of the pot odds}, a fact that generalises to every no-limit bet size. Third, \emph{trapping emerges}: P1 never bets the queen, the middle hand, because betting it would populate the betting range with a hand that loses to K and dominates nothing, corrupting the $1{:}3$ bluff--value ratio; instead the queen checks and collects calls from bluffs. In Hold'em this pattern reappears as the modern ``polarised betting range''---bet the nuts and the worst bluffs, check the middling hands.
+
+We verified Proposition~\ref{prop:kuhn} computationally: a self-contained vanilla CFR implementation (Section~\ref{sec:cfr}) run for $2 \times 10^{5}$ iterations converges to a profile whose exact value is $-0.055556$ (to six decimals, $= -1/18$) and whose exploitability \eqref{eq:expl}, computed by brute-force enumeration of all $2^{12}$ pure profiles, is $3.6 \times 10^{-4}$ of the ante. The converged strategy exhibits the family exactly: the measured bluff and value-bet rates were $\alpha = 0.233$ and $3\alpha = 0.698$, and P2's two mixing frequencies were $0.334$ and $0.335$. This tiny game is the paper's microscope for equilibrium structure; the remainder of the paper is devoted to making the same construction tractable at Hold'em's scale.

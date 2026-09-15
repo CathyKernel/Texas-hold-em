@@ -1,0 +1,38 @@
+\section{The Game of Texas Hold'em}\label{sec:game}
+
+\subsection{Structure and terminology}
+
+Texas Hold'em is played with a standard 52-card deck. Each player receives two private \emph{hole cards}; five \emph{community cards} are dealt face up in stages and shared by all players. A hand consists of four betting rounds interleaved with the card deals: \emph{preflop} (hole cards dealt), \emph{flop} (three community cards), \emph{turn} (one card), and \emph{river} (one final card). At the end of each hand, remaining players form their best five-card poker hand from the seven available cards (two hole plus five community); the player with the highest-ranked hand wins the pot, or the pot is split among tied players.
+
+In the no-limit variant, at each decision a player may fold (surrender the hand and any chips already wagered), check or call (match the current wager, or pass if no wager is pending), or raise to any amount between a minimum raise size and the player's entire remaining stack. Two forced wagers seed the pot: the \emph{small blind} and \emph{big blind}, posted before the cards are dealt by the two seats to the left of a \emph{dealer button} that rotates one seat each hand. The minimum raise equals the size of the last raise or bet; a raise of less than the minimum is permitted only when it exhausts a player's stack (a \emph{short all-in}), in which case betting is not reopened for players who have already acted.
+
+Figure~\ref{fig:streets} summarises the flow of a hand. Two details of correct rule enforcement deserve emphasis because naive implementations routinely botch them. First, when players are all-in and no further betting is possible, the remaining community cards are dealt and the hand proceeds directly to showdown, frequently producing layered \emph{side pots}: a player can only win a share of the pot proportional to the amount they actually matched from each opponent. Second, the preflop round is closed by an option for the big blind: if every other player has merely called, the big blind may still raise, because posting the blind is not a voluntary action.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  stage/.style={draw, rounded corners=3pt, minimum width=2.3cm, minimum height=0.9cm,
+                align=center, font=\small\sffamily, fill=boxbg},
+  arr/.style={-{Stealth[length=5pt]}, thick, rulegray}
+]
+  \node[stage] (pre) {Pre-flop\\2 hole cards};
+  \node[stage, right=0.8cm of pre] (flop) {Flop\\3 community};
+  \node[stage, right=0.8cm of flop] (turn) {Turn\\1 community};
+  \node[stage, right=0.8cm of turn] (riv) {River\\1 community};
+  \node[stage, right=0.8cm of riv, fill=accent!14] (sd) {Showdown\\best 5 of 7};
+  \draw[arr] (pre) -- (flop);
+  \draw[arr] (flop) -- (turn);
+  \draw[arr] (turn) -- (riv);
+  \draw[arr] (riv) -- (sd);
+\end{tikzpicture}
+\caption{The four betting streets of a Texas Hold'em hand. Each street ends when all active players have matched the largest wager or are all-in; a hand may terminate prematurely by folds at any point, in which case the last remaining player takes the pot without showdown.}
+\label{fig:streets}
+\end{figure}
+
+\subsection{Hand rankings}\label{sec:rankings}
+
+Five-card hands are ranked in nine categories, each compared within itself by kickers: straight flush (five consecutive cards of one suit, an ace-high straight flush being the \emph{royal flush}), four of a kind, full house (three of a kind plus a pair), flush, straight, three of a kind, two pair, one pair, and high card. The ranking is not arbitrary: as Section~\ref{sec:probability} quantifies, it reflects the number of card combinations that realise each category, so that rarer categories beat common ones with near-total reliability across the opponent's distribution of holdings.
+
+\subsection{From cards to decisions}
+
+A single hand of Hold'em presents each player with at most four decision points (one per street, plus extra decisions for each raise cycle). Yet the state space is astronomical. Heads-up no-limit Hold'em has on the order of $10^{160}$ decision points when stack-to-pot ratios allow deep betting trees~\cite{sandholm2015abstraction}, and even the limit variant contains $10^{18}$ game states. Consequently, every practical algorithm in this paper couples a search, estimation, or learning procedure with an \emph{abstraction} that compresses the state space to a tractable size. The art of poker AI is largely the art of designing abstractions whose equilibria are close to equilibria of the real game---a theme developed quantitatively in Sections~\ref{sec:cfr} and~\ref{sec:experiments}.

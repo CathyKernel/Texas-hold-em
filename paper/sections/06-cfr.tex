@@ -1,0 +1,95 @@
+% !TeX root = ../main.tex
+\section{Counterfactual Regret Minimization}\label{sec:cfr}
+
+% algorithm2e declarations
+\SetKwProg{Fn}{function}{:}{\hspace{6pt}}
+\SetKwFunction{CFRproc}{CFR}
+
+Counterfactual regret minimization (CFR), introduced by Zinkevich et al.~in 2007, is the algorithm that made large imperfect-information games tractable~\cite{zinkevich2007regret}. Its idea is to decompose a game's overall regret---an intractably global quantity---into independent per-information-set regrets, each minimised by a simple adaptive rule, and to prove that minimising the parts minimises the whole. We develop CFR in three steps: the no-regret learning primitive (regret matching), the decomposition theorem, and the sampling and function-approximation variants used in practice, including our own implementation whose training run and tournament behaviour are reported in Section~\ref{sec:experiments}.
+
+\subsection{Regret and regret matching}
+
+Fix a repeated decision problem with action set $A$, and let the adversary choose a sequence of payoff vectors $v^1, v^2, \dots, v^T$ with entries in $[-\Delta, \Delta]$, where $v^t(a)$ is the payoff of playing action $a$ at time $t$. An online learner produces a sequence of mixed strategies $\sigma^1, \dots, \sigma^T$ without seeing the future. Its \emph{external regret} against the best fixed action in hindsight is
+\begin{equation}\label{eq:regretdef}
+R^{T} \;=\; \max_{a^{*} \in A}\; \sum_{t=1}^{T} \left[ v^{t}(a^{*}) - \sum_{a \in A} \sigma^{t}(a)\, v^{t}(a) \right].
+\end{equation}
+A learner is \emph{no-regret} if $R^{T}/T \to 0$; the rate at which $R^T$ grows in $T$ is the learner's quality.
+
+\emph{Regret matching} maintains cumulative per-action regrets $r^{t}(a)$---the running total of $a$'s payoff minus the realised payoff of the mixed play---and plays the positive part, normalised:
+\begin{equation}\label{eq:rm}
+\sigma^{t+1}(a) \;=\; \frac{\max(0,\, r^{t}(a))}{\sum_{a'} \max(0,\, r^{t}(a'))},
+\qquad\text{with } \sigma^{t+1} \text{ uniform if the denominator is } 0.
+\end{equation}
+
+\begin{lemma}\label{lem:rm}
+Regret matching satisfies $R^{T} \;\le\; \Delta\sqrt{(|A|-1)\,T}$ for all $T$.
+\end{lemma}
+\begin{proof}[Proof sketch]
+Use the potential $\Phi^{t} = \sum_a \max(0, r^{t}(a))^2$. A Blackwell-condition computation shows $\Phi^{t} - \Phi^{t-1} \le \sum_a (v^t(a) - \bar v^t)^2 \le \Delta^{2}(|A|-1)$ at every step, and $R^{T} \le \sqrt{|A|\,\Phi^{T}}$ relates the potential to the regret. Chaining the two bounds and dividing by $T$ gives average regret $O(\Delta\sqrt{|A|/T})$; see~\cite{cesabianchi2006prediction} for the complete argument.
+\end{proof}
+
+The beauty of \eqref{eq:rm} is what it does \emph{not} require: no knowledge of the adversary, no lookahead, and yet the learner's time-average strategy is essentially as good as the best fixed action in hindsight against the actual sequence of opponents encountered. In poker the adversary is the joint behaviour of all other players and the deal of the cards, which is exactly the adversarial uncertainty that Sections~\ref{sec:evaluation}--\ref{sec:gametheory} could not confront.
+
+\subsection{The CFR decomposition}
+
+To lift regret matching from single decisions to game trees, define for player $i$, information set $I$, and action $a$ the \emph{counterfactual value}
+\begin{equation}\label{eq:cfval}
+v_{i}(I, a) \;=\; \sum_{h \in I}\; \pi^{\sigma}_{-i}(h)\; \sum_{z \in Z} \; \pi^{\sigma}_{ha z}\, u_{i}(z),
+\end{equation}
+where $\pi^{\sigma}_{-i}(h)$ is the product of all chance probabilities and opponents' action probabilities on the path to $h$ ($i$'s own probabilities excluded---hence \emph{counterfactual}: the value of $I$ to $i$ \emph{were $i$ to play to reach it}), and $\pi^{\sigma}_{haz}$ is the probability of continuing from $h \cdot a$ to terminal $z$. The counterfactual regret of $I$ is $r_i(I, a) = v_i(I, a) - \sum_{a'} \sigma_i(a'|I)\, v_i(I, a')$. The key theorem is a decomposition:
+
+\begin{theorem}[Zinkevich et al.~\cite{zinkevich2007regret}]\label{thm:cfr}
+If each player $i$ plays at every information set $I \in \mathcal{I}_i$ by regret matching \eqref{eq:rm} applied to its counterfactual regrets, then player $i$'s overall average regret in the full game obeys
+\begin{equation}\label{eq:cfrbound}
+\bar R^{T}_{i} \;\le\; \frac{\Delta_i}{T} \sum_{I \in \mathcal{I}_i} \sqrt{T\,|A(I)|} \;=\; \Delta_i \sum_{I \in \mathcal{I}_i} \sqrt{\frac{|A(I)|}{T}},
+\end{equation}
+where $\Delta_i$ is the range of $i$'s payoffs. In particular $\bar R_i^T \to 0$ at rate $O(1/\sqrt{T})$, and by the definition of regret the \emph{average} strategy profile $\bar\sigma^T$ (the reach-weighted mean of the played $\sigma^t$) is a $(\sum_i \bar R_i^T)$-Nash equilibrium in two-player zero-sum games, hence $\varepsilon(\bar\sigma^T) \le \sum_i \bar R_i^T$.
+\end{theorem}
+
+Two remarks translate the theorem into practice. First, the bound is \emph{additive over information sets}, so the algorithm never solves a global optimisation problem: each information set runs its own tiny regret matcher, and equilibrium emerges from the interaction. Second, the bound's dependence on $|\mathcal{I}_i|$ is the formal statement of ``the game is too big'': for $10^{17}$ information sets, direct tabular CFR needs astronomically many iterations before \eqref{eq:cfrbound} becomes meaningful---hence the abstraction and sampling machinery below. Algorithm~\ref{alg:cfr} states vanilla CFR in full.
+
+\begin{algorithm}[htbp]
+\SetAlgoLined
+\caption{CFR (one iteration; alternating player updates, CFR$^{+}$ variant).}\label{alg:cfr}
+\KwIn{game tree, cumulative regrets $r(I,\cdot)$, cumulative strategies $s(I,\cdot)$, updating player $i$}
+\Fn{\CFRproc$(h, \pi_{i}, \pi_{-i})$}{
+  \If{$h \in Z$}{\Return $u_i(h)$\;}
+  \If{$P(h) = c$}{\Return $\sum_{a} \sigma_c(h,a)\,$ \CFRproc$(ha,\, \pi_i,\, \pi_{-i}\sigma_c(h,a))$\;}
+  $I \leftarrow$ information set containing $h$; \quad $\sigma(I,\cdot) \leftarrow$ regret matching \eqref{eq:rm} on $r(I,\cdot)$\;
+  \If{$P(h) = i$}{
+    $s(I,a) \mathrel{+}= \pi_i \,\sigma(I,a)$ for all $a$ \tcp*{average strategy accumulator}
+    \For{each action $a$}{
+      $v(a) \leftarrow$ \CFRproc$(ha,\, \pi_i\,\sigma(I,a),\, \pi_{-i})$\;
+    }
+    $v \leftarrow \sum_a \sigma(I,a)\, v(a)$\;
+    $r(I,a) \mathrel{+}= \pi_{-i}\,(v(a) - v)$ for all $a$ \tcp*{CFR$^{+}$: $r \leftarrow \max(0,\, r)$ after update}
+    \Return $v$\;
+  }
+  \tcp{opponent (or non-updating player): sample or enumerate $\sigma(I,\cdot)$}
+  \Return $\sum_{a} \sigma(I,a)\,$ \CFRproc$(ha,\, \pi_i,\, \pi_{-i}\,\sigma(I,a))$\;
+}
+\BlankLine
+\textbf{Output:} after $T$ iterations, $\bar\sigma(I,\cdot) = s(I,\cdot)/\sum_a s(I,a)$ is the (approximate) equilibrium strategy.
+\end{algorithm}
+
+\paragraph{CFR$^{+}$.} Tammelin's CFR$^{+}$ modifies \eqref{eq:rm} by clamping cumulative regrets at zero after every update, alternating the updating player between iterations, and weighting the average strategy linearly in $t$~\cite{tammelin2015cfrplus}. No new theory is required---the variant remains a no-regret procedure---but convergence in practice improves by more than an order of magnitude; CFR$^{+}$ was the engine behind essentially solving heads-up limit Hold'em~\cite{bowling2015ceph}. Our training pipeline adopts the clamped-regret alternation with uniform averaging, which retains the no-regret guarantee of the underlying scheme.
+
+\paragraph{Monte Carlo CFR.} Vanilla CFR touches every node of the tree per iteration; even in an abstracted game this is prohibitive. Monte Carlo CFR (MCCFR) samples the traversal so that each counterfactual regret increment is an \emph{unbiased} estimator of its exact value, then scales the update by the inverse sampling probability~\cite{lanctot2009monte}. The workhorse variant is \emph{external sampling}: at each iteration one traverser $i$ is fixed; the walk enumerates \emph{all} of $i$'s actions at $i$'s nodes (computing each child's value exactly along the sampled line) while opponent actions and chance deals are sampled from their current strategies. Per-iteration cost drops from the full tree to a single sampled line times the traverser's branching factor, and the estimator variance concentrates on the opponent/chance realisations, which is precisely where poker's uncertainty lives. External-sampling MCCFR with CFR$^{+}$ regrets is the training algorithm of both Libratus and Pluribus~\cite{brown2017libratus,brown2019pluribus}---and of the CFR agent in our implementation, which trains a six-player blueprint by self-play with a rotating dealer button and pooled average strategies across seats.
+
+\subsection{Abstraction: making the game fit}\label{sec:abstraction}
+
+CFR's bound \eqref{eq:cfrbound} is only useful if $\mathcal{I}$ is small. Abstraction shrinks the game in two orthogonal directions.
+
+\paragraph{Card abstraction.} Hands of similar strength are merged into \emph{buckets}. Preflop, the $1{,}326$ concrete holdings collapse---losslessly, by suit isomorphism---to $169$ canonical classes, which our pipeline further compresses to $20$ percentile buckets of preflop equity. Postflop, our implementation computes an approximate strength percentile (made-hand category with kicker interpolation, plus additive bonuses for flush draws and straight draws) and buckets it into $10$ classes. Production systems cluster the $\binom{50}{2} = 1{,}225$ river hand classes by $k$-means on earth-mover distance between equity distributions, a construction due to Schnizlein et al.~that preserves far more strategic structure~\cite{schnizlein2012card}.
+
+\paragraph{Action abstraction.} No-limit betting is continuous; trees are not. The standard fix is a small menu of abstract bet sizes: ours is $\{f, c, h, p\}$ = fold, check/call, raise to roughly half the pot, raise to roughly the pot, with raises capped at three per street and a deterministic mapping from abstract char to a legal concrete raise (opening raises of $2.5\times$ and $4\times$ the big blind preflop, half-pot and pot postflop, re-raises to $2\times$ and $2.75\times$ the current wager, all clamped to legal minimums and to the stack). Libratus went further and refined its bet-size abstraction \emph{during} play by adding sizes its opponents preferred~\cite{brown2017libratus}.
+
+The information-set space then factorises as a product: position class (five values, button-relative), street (four), card bucket ($20$ preflop / $10$ postflop), and a compressed betting pattern (counts of raises, calls, folds within the street). Trained by external-sampling MCCFR until the per-iteration rate stabilised, our blueprint covers $13{,}873$ distinct information-set keys reached in self-play---down from the $10^{160}$ scale of the raw game by virtue of the abstraction, at the price of strategic fidelity.
+
+\paragraph{The price of abstraction.} An equilibrium of the abstract game is generally \emph{not} an equilibrium of the full game, for two distinct reasons. Mapping different full-game states into one abstract state forces the abstract strategy to play them identically, which is optimal only if their equilibrium strategies truly coincide; and the abstract game contains bet sizes and sequences absent from the full game's realised play, so off-tree evaluation mis-prices the translated strategy. The phenomenon is measurable---a best responder allowed to bet arbitrary sizes exploits blueprint strategies trained on coarse action abstraction, an effect documented by Lanctot et al.~and countered in research systems by finer size ladders and by subgame re-solving at play time~\cite{waugh2009abstraction,brown2018depth}. In our experimental setting, all agents share one action abstraction, so abstraction error cancels from the \emph{comparison} even though it remains part of each agent's absolute distance from true equilibrium.
+
+\subsection{Deep CFR: regrets as a learned function}\label{sec:deepcfr}
+
+Tabular CFR stores one regret vector per information set, so the table's size is the game's size. Deep CFR replaces the tables with a neural network $\hat v_{\theta}: \mathcal{S} \to \mathbb{R}^{|A|}$ that \emph{predicts} counterfactual advantages from state features~\cite{brown2019deep}. During MCCFR traversals, (feature vector, advantage) pairs are reservoir-sampled into a replay buffer; the network is periodically trained by minimising squared error against the sampled advantages; and regret matching is applied to the \emph{predicted} advantages at play time. The theoretical cost is explicit: if the network's prediction error is bounded by $\delta$ in the appropriate weighted norm, the regret bound \eqref{eq:cfrbound} degrades by an additive $O(\delta)$ term, so the learned strategy is an approximate equilibrium of the abstract game to the accuracy of the function approximator. The benefit is that $\hat v_\theta$ \emph{generalises} to information sets the traversal never visited---the uniform-fallback failure mode of a sparse table disappears.
+
+Our implementation is a deliberately miniature Deep CFR. The feature vector has $14$ entries (street one-hot, normalised hand bucket, pot-odds fraction, pot-to-stack ratio, active-player fraction, position one-hot, can-raise indicator); the network is a $14 \to 32 \to 4$ multilayer perceptron with $\tanh$ hidden units trained by momentum stochastic gradient descent on a $60{,}000$-sample reservoir. On held-out validation data the trained network predicts MCCFR advantages with a Pearson correlation of $0.44$---honest numbers for a model of this size, and far below the fidelity of production systems, but sufficient to produce a playing style measurably distinct from its tabular sibling, as Section~\ref{sec:experiments} quantifies. The miniature exists precisely to make the architecture's moving parts---reservoir sampling, advantage regression, regret matching on predictions---inspectable end to end.
