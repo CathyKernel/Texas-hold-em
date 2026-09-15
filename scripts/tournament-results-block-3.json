@@ -1,0 +1,73 @@
+{
+  "meta": {
+    "block": 3,
+    "shadowType": "deepcfr",
+    "hands": 20000,
+    "seed": 20284671,
+    "mcSimsBudget": 300,
+    "blinds": "5/10",
+    "startStack": 1000,
+    "elapsedSeconds": 3,
+    "conservationErrors": 0,
+    "illegalActions": 0,
+    "showdownHands": 13594,
+    "flopSeen": 13594
+  },
+  "stats": {
+    "rule": {
+      "hands": 20000,
+      "netChips": 409138,
+      "mbbPerHand": 2045.69,
+      "mbbPerHandSE": 500.89287284926996,
+      "vpip": 55.775,
+      "pfr": 2.785,
+      "aggressionFreq": 9.51815620350144,
+      "showdownFreq": 46.37,
+      "showdownWinPct": 44.64093163683416
+    },
+    "montecarlo": {
+      "hands": 20000,
+      "netChips": -210981,
+      "mbbPerHand": -1054.905,
+      "mbbPerHandSE": 168.4705327261974,
+      "vpip": 24.745,
+      "pfr": 11.165,
+      "aggressionFreq": 13.579259555466693,
+      "showdownFreq": 4.5,
+      "showdownWinPct": 57.22222222222222
+    },
+    "cfr": {
+      "hands": 20000,
+      "netChips": -505982,
+      "mbbPerHand": -2529.91,
+      "mbbPerHandSE": 415.4560281420827,
+      "vpip": 57.410000000000004,
+      "pfr": 44.97,
+      "aggressionFreq": 37.04133341473839,
+      "showdownFreq": 24.605,
+      "showdownWinPct": 46.39300955090428
+    },
+    "deepcfr": {
+      "hands": 20000,
+      "netChips": 139711,
+      "mbbPerHand": 698.5550000000001,
+      "mbbPerHandSE": 508.77957051221966,
+      "vpip": 62.035,
+      "pfr": 58.56,
+      "aggressionFreq": 52.42513389152901,
+      "showdownFreq": 39.905,
+      "showdownWinPct": 45.270016288685625
+    },
+    "rl": {
+      "hands": 20000,
+      "netChips": -110038,
+      "mbbPerHand": -550.1899999999999,
+      "mbbPerHandSE": 110.3509252258222,
+      "vpip": 6.08,
+      "pfr": 4.2700000000000005,
+      "aggressionFreq": 7.657187581528829,
+      "showdownFreq": 1.855,
+      "showdownWinPct": 49.32614555256065
+    }
+  }
+}

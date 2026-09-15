@@ -1,0 +1,54 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NOTE — this file is named "gitignore" (without the leading dot) on purpose:
+# GitHub's web drag-and-drop uploader skips hidden files (names starting with
+# a dot). After uploading this repository, open this file in the GitHub editor
+# and rename it to ".gitignore" (add the leading dot, keep the contents).
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.*
+
+# Testing
+coverage/
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Misc
+.DS_Store
+*.pem
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+
+# Local env files (this project needs none to run — see README)
+.env
+.env*.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Editors
+.idea/
+.vscode/
+*.swp

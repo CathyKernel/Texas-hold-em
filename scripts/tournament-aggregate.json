@@ -1,0 +1,81 @@
+{
+ "meta": {
+  "totalHands": 100000,
+  "conservationErrors": 0,
+  "illegalActions": 0,
+  "showdownHands": 63980,
+  "elapsedSeconds": 16
+ },
+ "stats": {
+  "rule": {
+   "hands": 100000,
+   "netChips": 792823,
+   "bbPerHand": 0.792823,
+   "bbPer100": 79.2823,
+   "se_bbPerHand": 0.2101439752929089,
+   "z": 3.772761026790917,
+   "vpip": 60.870000000000005,
+   "pfr": 3.245,
+   "aggressionFreq": 10.824325321019879,
+   "showdownFreq": 49.382,
+   "showdownWinPct": 44.20031590458062,
+   "perHandStd_bb": 66.45335984877417
+  },
+  "montecarlo": {
+   "hands": 100000,
+   "netChips": -518885,
+   "bbPerHand": -0.518885,
+   "bbPer100": -51.88850000000001,
+   "se_bbPerHand": 0.0713926201968225,
+   "z": -7.268048133959568,
+   "vpip": 25.189,
+   "pfr": 12.879,
+   "aggressionFreq": 15.617941476162553,
+   "showdownFreq": 4.957000000000001,
+   "showdownWinPct": 59.2495460964293,
+   "perHandStd_bb": 22.57632879492977
+  },
+  "cfr": {
+   "hands": 100000,
+   "netChips": -1700016,
+   "bbPerHand": -1.7000160000000002,
+   "bbPer100": -170.00160000000002,
+   "se_bbPerHand": 0.1754823967524875,
+   "z": -9.687672561241683,
+   "vpip": 58.64,
+   "pfr": 46.596,
+   "aggressionFreq": 40.569511903314535,
+   "showdownFreq": 25.71,
+   "showdownWinPct": 47.47569039284325,
+   "perHandStd_bb": 55.492406300319544
+  },
+  "deepcfr": {
+   "hands": 100000,
+   "netChips": 1447458,
+   "bbPerHand": 1.447458,
+   "bbPer100": 144.7458,
+   "se_bbPerHand": 0.20985298372761432,
+   "z": 6.897485917468662,
+   "vpip": 62.026,
+   "pfr": 58.650000000000006,
+   "aggressionFreq": 56.54257179657783,
+   "showdownFreq": 37.159,
+   "showdownWinPct": 46.971124088376975,
+   "perHandStd_bb": 66.36134023615132
+  },
+  "rl": {
+   "hands": 100000,
+   "netChips": -261894,
+   "bbPerHand": -0.26189399999999996,
+   "bbPer100": -26.189399999999996,
+   "se_bbPerHand": 0.051561977922958316,
+   "z": -5.079207791278114,
+   "vpip": 6.297999999999999,
+   "pfr": 4.661,
+   "aggressionFreq": 8.76121498033244,
+   "showdownFreq": 2.455,
+   "showdownWinPct": 51.405295315682274,
+   "perHandStd_bb": 16.30532908998662
+  }
+ }
+}
