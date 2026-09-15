@@ -5,6 +5,8 @@ import { PokerTable } from '@/components/poker/poker-table';
 import { ActionBar } from '@/components/poker/action-bar';
 import { InsightPanel } from '@/components/poker/insight-panel';
 import { HandLog } from '@/components/poker/hand-log';
+import { StreetProgress } from '@/components/poker/street-progress';
+import { RulesHelp } from '@/components/poker/rules-help';
 import { AboutDialog } from '@/components/poker/about-dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -98,6 +100,9 @@ export default function Home() {
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <section className="flex flex-col gap-3 min-w-0">
+          {/* Street-by-street progress — the spine of the whole hand */}
+          {snap && <StreetProgress state={snap} phase={phase} />}
+
           {phase === 'loading' || !snap ? (
             <div className="aspect-[16/10] min-h-[380px] max-h-[560px] rounded-2xl border border-white/5 bg-slate-900/40 flex flex-col items-center justify-center gap-3">
               <div className="h-8 w-8 rounded-full border-2 border-amber-400/30 border-t-amber-400 animate-spin" />
@@ -110,30 +115,47 @@ export default function Home() {
         </section>
 
         <aside className="min-w-0">
-          <Tabs defaultValue="insights" className="h-full">
-            <TabsList className="grid grid-cols-2 w-full bg-slate-900/60">
-              <TabsTrigger value="insights">AI Insights</TabsTrigger>
+          <Tabs defaultValue="log" className="h-full">
+            <TabsList className="grid grid-cols-3 w-full bg-slate-900/60">
               <TabsTrigger value="log">Hand Log</TabsTrigger>
+              <TabsTrigger value="insights">AI Insights</TabsTrigger>
+              <TabsTrigger value="rules">Rules</TabsTrigger>
             </TabsList>
+            <TabsContent value="log" className="mt-2">
+              <Card className="border-white/8 bg-slate-950/50">
+                <CardHeader className="py-3 px-3">
+                  <CardTitle className="text-xs font-semibold text-slate-400 tracking-wide uppercase">
+                    Hand history — every action, in order
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <div className="h-[62vh] overflow-y-auto log-scroll pr-1">
+                    <HandLog log={game.log} />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
             <TabsContent value="insights" className="mt-2">
               <Card className="border-white/8 bg-slate-950/50">
                 <CardHeader className="py-3 px-3">
                   <CardTitle className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Live decision transparency</CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
-                  <div className="max-h-[70vh] overflow-y-auto log-scroll pr-1">
+                  <div className="max-h-[62vh] overflow-y-auto log-scroll pr-1">
                     <InsightPanel insights={game.insights} artifactMeta={game.artifactMeta} activeSeat={actingSeat} />
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
-            <TabsContent value="log" className="mt-2">
+            <TabsContent value="rules" className="mt-2">
               <Card className="border-white/8 bg-slate-950/50">
                 <CardHeader className="py-3 px-3">
-                  <CardTitle className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Hand history</CardTitle>
+                  <CardTitle className="text-xs font-semibold text-slate-400 tracking-wide uppercase">How this table runs</CardTitle>
                 </CardHeader>
                 <CardContent className="px-3 pb-3">
-                  <div className="h-[70vh]">{<HandLog log={game.log} />}</div>
+                  <div className="max-h-[62vh] overflow-y-auto log-scroll pr-1">
+                    <RulesHelp />
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>

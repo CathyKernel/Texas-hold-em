@@ -63,7 +63,7 @@ High card & $1{,}302{,}540$ & $50.1\%$ & $23{,}294{,}460$ & $17.4\%$ \\
 
 \subsection{Preflop equity}\label{sec:preflopequity}
 
-The single most useful summary of a starting hand is its \emph{equity}: the probability of winning (with ties counted fractionally) if all remaining cards were dealt and all hands revealed. Equity against a single uniformly random opponent can be computed exactly by enumeration or estimated by simulation; Figure~\ref{fig:preflop} shows the values for all $169$ canonical hands. The structure is instructive. Pocket aces hold about $85\%$ equity; the worst hand, $7\clubsuit 2\diamondsuit$, holds about $35\%$---still far from hopeless heads-up, because even trash occasionally pairs or makes a backdoor straight. Suitedness is worth roughly $2$--$3$ equity points for high-card hands (flush potential), and connectedness adds a fraction of a point (straight potential). The same grid, computed against multiple simultaneous random opponents, compresses dramatically: against five random hands, AA retains roughly $49\%$ equity while $72$o falls under $5\%$, which is why multiway pots systematically reward speculative hands and punish dominated high-card holdings.
+The single most useful summary of a starting hand is its \emph{equity}: the probability of winning (with ties counted fractionally) if all remaining cards were dealt and all hands revealed. Equity against a single uniformly random opponent can be computed exactly by enumeration or estimated by simulation; Figure~\ref{fig:preflop} shows the values for all $169$ canonical hands. The structure is instructive. Pocket aces hold about $85\%$ equity ($85.8\%$ in the simulated grid); at the other end, the weakest offsuit holdings---$3\clubsuit 2\diamondsuit$ and $7\clubsuit 2\diamondsuit$---win barely a third of runouts ($31.4\%$ and $32.5\%$ in Figure~\ref{fig:preflop})---still far from hopeless heads-up, because even trash occasionally pairs or makes a backdoor straight. Suitedness is worth roughly $2$--$3$ equity points for high-card hands (flush potential), and connectedness adds a fraction of a point (straight potential). The same grid, computed against multiple simultaneous random opponents, compresses dramatically: against five random hands, AA retains roughly $49\%$ equity while $72$o falls to about $12\%$, which is why multiway pots systematically reward speculative hands and punish dominated high-card holdings.
 
 \begin{figure}[htbp]
 \centering
@@ -78,7 +78,7 @@ Once the flop arrives, hand strength must be conditioned on the visible cards. I
 \begin{equation}\label{eq:flushdraw}
 \Pr(\text{flush by river} \mid \text{flop}) = 1 - \frac{\binom{47}{2} - \binom{9}{1}\binom{38}{1} - \binom{9}{2}}{\binom{47}{2}} = 1 - \frac{\binom{38}{2}}{\binom{47}{2}} \approx 0.3497 .
 \end{equation}
-Poker players memorise the practical rule that follows from \eqref{eq:flushdraw}: with two cards to come, multiply the number of \emph{outs} by $4$; with one card to come, by $2$. The rule is accurate to within a couple of percentage points for the relevant range $1 \le \text{outs} \le 21$ precisely because it is the first-order binomial approximation of \eqref{eq:flushdraw}.
+Poker players memorise the practical rule that follows from \eqref{eq:flushdraw}: with two cards to come, multiply the number of \emph{outs} by $4$; with one card to come, by $2$. The rule is accurate to within a couple of percentage points over the practically common range of up to about a dozen outs, and drifts progressively beyond that as the second-order term grows, precisely because it is the first-order binomial approximation of \eqref{eq:flushdraw}.
 
 Bayes' theorem is the formal home of \emph{reading} an opponent. Write $H$ for a hypothesis about the opponent's holding (for instance, ``at least one club'') and $E$ for observed evidence (for instance, ``the opponent called a large bet on a two-club board''). Then
 \begin{equation}\label{eq:bayes}
@@ -116,7 +116,7 @@ Poker outcomes are dominated by variance. In a typical no-limit game, the per-ha
 \begin{equation}\label{eq:handsneeded}
 n \;\ge\; \left( \frac{1.645\,\sigma}{\mu} \right)^{2} .
 \end{equation}
-With $\sigma = 12$\,bb and $\mu = 0.3$\,bb this is roughly $43{,}000$ hands---a first quantitative explanation of why judging poker skill from a single session is statistically meaningless, and why the simulation study of Section~\ref{sec:experiments} requires tens of thousands of hands to separate its agents.
+With $\sigma = 12$\,bb and $\mu = 0.3$\,bb this is roughly $4{,}300$ hands---a first quantitative explanation of why judging poker skill from a single session is statistically meaningless, and why the simulation study of Section~\ref{sec:experiments} requires tens of thousands of hands to separate its agents.
 
 Bankroll management is the repeated-investment version of the same computation. If a player wins $b$ units per unit staked with probability $p > 1/2$, Kelly's classical result~\cite{kelly1956new} states that the fraction of the bankroll to risk that maximises the asymptotic growth rate is
 \begin{equation}\label{eq:kelly}

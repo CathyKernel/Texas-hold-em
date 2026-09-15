@@ -214,9 +214,15 @@ export function usePokerGame(): UsePokerGameReturn {
             else if (e.isBet) pushLog(`${nameOf(e.seat)} ${verbOf(e.seat, 'bet')} ${e.to}.`);
             else pushLog(`${nameOf(e.seat)} ${verbOf(e.seat, 'raise')} to ${e.to}.`);
             break;
-          case 'street':
-            pushLog(`${e.street[0].toUpperCase() + e.street.slice(1)}: ${e.cards.map(cardStr).join(' ')}.`, 'street');
+          case 'street': {
+            // New street: clear per-street action chips so the table reads fresh
+            setLastActions({});
+            pushLog(
+              `— ${e.street[0].toUpperCase() + e.street.slice(1)} dealt: ${e.cards.map(cardStr).join(' ')} —`,
+              'street',
+            );
             break;
+          }
           case 'return':
             pushLog(`${e.amount} uncalled returned to ${nameOf(e.seat)}.`);
             break;

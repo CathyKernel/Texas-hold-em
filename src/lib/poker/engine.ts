@@ -165,7 +165,12 @@ export function cloneState(s: GameState): GameState {
     sb: s.sb,
     bb: s.bb,
     startingStack: s.startingStack,
-    showdownInfo: null,
+    showdownInfo: s.showdownInfo === null ? null : {
+      reveal: s.showdownInfo.reveal.map((r) => ({ ...r, cards: r.cards.slice() })),
+      pots: s.showdownInfo.pots.map((p) => ({ ...p, eligibleSeats: p.eligibleSeats.slice(), winnerSeats: p.winnerSeats.slice() })),
+      totalAward: s.showdownInfo.totalAward.map((a) => ({ ...a })),
+      foldWin: s.showdownInfo.foldWin,
+    },
   };
 }
 
@@ -248,7 +253,11 @@ export function getLegalActions(s: GameState): LegalAction | null {
   const canCall = toCall > 0;
   const reopenAllowed = !p.hasActed || s.fullRaiseCount > p.actedAtRaiseCount;
   const maxTo = p.bet + p.stack;
-  const canRaise = reopenAllowed && p.stack > 0 && (maxTo > s.currentBet);
+  // If every other live player is all-in (or no one else can call), betting is
+  // meaningless: a bet cannot be called. Only folding/calling/checking allowed.
+  const othersLive = s.players.filter((q) => q !== p && (q.status === 'in' || q.status === 'allin'));
+  const othersCanCall = s.players.some((q) => q !== p && q.status === 'in' && q.stack > 0);
+  const canRaise = reopenAllowed && p.stack > 0 && maxTo > s.currentBet && othersCanCall && (othersLive.length > 1 || othersCanCall);
   const minTo = Math.min(s.minRaiseTo, maxTo);
   return {
     seat: p.seat,
@@ -304,6 +313,10 @@ export function applyAction(s: GameState, action: Action, rng: () => number): Ga
     if (to < maxTo && to < s.minRaiseTo) {
       throw new Error(`Raise below minimum (min raise-to ${s.minRaiseTo})`);
     }
+    // A bet/raise is meaningless if no opponent can ever call it (everyone else
+    // folded or all-in): the chips would be uncalled. Reject it outright.
+    const othersCanCall = s.players.some((q) => q !== p && q.status === 'in' && q.stack > 0);
+    if (!othersCanCall) throw new Error('No opponent can call: bet or raise is not allowed');
     const raiseInc = to - s.currentBet;
     const pay = to - p.bet;
     p.stack -= pay;
@@ -505,6 +518,10 @@ function showdown(s: GameState, events: GameEvent[]): void {
   }
 
   // Build contribution layers
+  // Folded players' chips are dead money: they still fund pots, but the layer
+  // eligibility is decided by non-folded players. If a layer would end up with
+  // NO eligible player (top layer contributed only by folded players), its chips
+  // must be pushed down into the highest layer that has an eligible winner.
   const remaining = s.players.map((p) => p.committed);
   const pots: { amount: number; eligible: number[] }[] = [];
   while (remaining.some((r) => r > 0)) {
@@ -528,6 +545,23 @@ function showdown(s: GameState, events: GameEvent[]): void {
         prev.amount += cur.amount;
         pots.pop();
       }
+    }
+  }
+  // Dead-money repair: a layer with no eligible winner (only folded players
+  // contributed at that depth) rolls into the deepest layer that has one.
+  for (let i = pots.length - 1; i >= 0; i--) {
+    if (pots[i].eligible.length === 0) {
+      const target = pots.slice(0, i).findLastIndex((p) => p.eligible.length > 0);
+      if (target === -1) {
+        // No eligible winner anywhere: refund contributors (should not happen;
+        // guarded by fold-win path) — return chips to folded contributors.
+        for (const p of s.players) {
+          if (p.committed > 0) { p.stack += p.committed; }
+        }
+        return;
+      }
+      pots[target].amount += pots[i].amount;
+      pots.splice(i, 1);
     }
   }
 

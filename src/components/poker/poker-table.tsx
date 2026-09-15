@@ -1,18 +1,20 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { positionLabel, totalPot, type GameState } from '@/lib/poker/engine';
+import { positionLabel, totalPot, type GameState, type ShowdownInfo } from '@/lib/poker/engine';
 import { Seat } from './seat';
 import { PlayingCard } from './playing-card';
 import { AnimatePresence, motion } from 'framer-motion';
 
-const SEAT_POS = [
-  { x: 50, y: 88 },
-  { x: 10, y: 66 },
-  { x: 13, y: 20 },
-  { x: 50, y: 5 },
-  { x: 87, y: 20 },
-  { x: 90, y: 66 },
+// Responsive seat placement: percentage centers via arbitrary Tailwind values.
+// On narrow screens side seats pull inward so plates never cross the viewport edge.
+const SEAT_CLS = [
+  'left-1/2 top-[86%] max-sm:top-[80%]',
+  'left-[10%] top-[66%] max-sm:left-[17%]',
+  'left-[13%] top-[20%] max-sm:left-[21%]',
+  'left-1/2 top-[5%]',
+  'left-[87%] top-[20%] max-sm:left-[79%]',
+  'left-[90%] top-[66%] max-sm:left-[83%]',
 ];
 
 const BET_POS = [
@@ -43,6 +45,14 @@ const STREET_NAMES: Record<string, string> = {
   idle: '',
 };
 
+const STREET_SUB: Record<string, string> = {
+  preflop: 'Hole cards dealt',
+  flop: '3 community cards',
+  turn: '4th street',
+  river: 'Final card · last betting round',
+  showdown: 'Best 5 of 7 wins',
+};
+
 export function PokerTable({
   state,
   phase,
@@ -57,15 +67,16 @@ export function PokerTable({
   lastActions: Record<number, string>;
 }) {
   const pot = totalPot(state);
-  const revealMap = new Map<number, number[]>();
-  if (state.showdownInfo && !state.showdownInfo.foldWin) {
-    for (const r of state.showdownInfo.reveal) revealMap.set(r.seat, r.cards);
+  const sd: ShowdownInfo | null = state.showdownInfo;
+  const revealMap = new Map<number, { cards: number[]; handName: string; won: boolean }>();
+  if (sd && !sd.foldWin) {
+    for (const r of sd.reveal) revealMap.set(r.seat, { cards: r.cards, handName: r.handName, won: r.won });
   }
   const wonMap = new Map<number, number>();
-  if (state.showdownInfo) {
-    for (const a of state.showdownInfo.totalAward) wonMap.set(a.seat, a.amount);
+  if (sd) {
+    for (const a of sd.totalAward) wonMap.set(a.seat, (wonMap.get(a.seat) ?? 0) + a.amount);
   }
-  const showCardsNow = phase === 'handover';
+  const showCardsNow = phase === 'handover' && !!sd;
 
   return (
     <div className="relative w-full aspect-[16/10] min-h-[380px] max-h-[560px] mx-auto select-none table-viewport">
@@ -80,7 +91,10 @@ export function PokerTable({
 
       {/* Pot + street label */}
       <div className="absolute left-1/2 top-[38%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1.5 z-10 pointer-events-none">
-        <div className="text-[10px] font-bold tracking-[0.25em] text-amber-200/70">{STREET_NAMES[state.stage] ?? ''}</div>
+        <div className="text-center">
+          <div className="text-[10px] font-bold tracking-[0.25em] text-amber-200/70">{STREET_NAMES[state.stage] ?? ''}</div>
+          <div className="text-[9px] text-slate-500">{STREET_SUB[state.stage] ?? ''}</div>
+        </div>
         {state.stage !== 'idle' && state.stage !== 'handover' && (
           <div className="flex items-center gap-1.5 bg-slate-950/70 border border-amber-500/30 rounded-full px-3 py-1">
             <span className="chip chip-sm" aria-hidden />
@@ -112,16 +126,17 @@ export function PokerTable({
       {/* Seats */}
       {state.players.map((p, seat) => {
         if (p.status === 'busted' && phase !== 'handover') return null;
-        const pos = SEAT_POS[seat];
+        const rev = showCardsNow ? revealMap.get(seat) : undefined;
         return (
-          <div key={seat} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+          <div key={seat} className={cn('absolute -translate-x-1/2 -translate-y-1/2 z-10', SEAT_CLS[seat])}>
             <Seat
               player={p}
               posLabel={positionLabel(state, seat)}
               isActor={actingSeat === seat}
               isThinking={actingSeat === seat && seat !== 0}
               lastAction={lastActions[seat] ?? null}
-              revealCards={showCardsNow ? revealMap.get(seat) : undefined}
+              revealCards={rev?.cards}
+              handName={rev?.handName}
               wonAmount={showCardsNow ? wonMap.get(seat) : undefined}
               isHuman={p.isHuman}
               compact={seat !== 0}
@@ -151,6 +166,7 @@ export function PokerTable({
         <div
           className="absolute -translate-x-1/2 -translate-y-1/2 z-10"
           style={{ left: `${BTN_POS[state.button].x}%`, top: `${BTN_POS[state.button].y}%` }}
+          title="Dealer button — rotates one seat each hand; small blind sits directly left"
         >
           <div className="w-6 h-6 rounded-full bg-white shadow-md border-2 border-slate-300 flex items-center justify-center text-[10px] font-black text-slate-800">
             D
@@ -158,30 +174,38 @@ export function PokerTable({
         </div>
       )}
 
-      {/* Showdown summary */}
+      {/* Showdown summary — per-pot breakdown */}
       <AnimatePresence>
-        {phase === 'handover' && state.showdownInfo && (
+        {showCardsNow && sd && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute left-1/2 top-[52%] -translate-x-1/2 z-30 w-[70%] max-w-md pointer-events-none"
+            className="absolute left-1/2 top-[54%] -translate-x-1/2 z-30 w-[76%] max-w-lg pointer-events-none"
           >
-            <div className="rounded-xl bg-slate-950/90 border border-amber-500/40 shadow-xl px-4 py-3 backdrop-blur">
+            <div className="rounded-xl bg-slate-950/92 border border-amber-500/40 shadow-xl px-4 py-3 backdrop-blur">
               <div className="text-center text-[10px] font-bold tracking-[0.25em] text-amber-300 mb-1.5">
-                {state.showdownInfo.foldWin ? 'POT AWARDED' : 'SHOWDOWN RESULT'}
+                {sd.foldWin ? 'POT AWARDED — ALL FOLDED' : 'SHOWDOWN RESULT'}
               </div>
-              {state.showdownInfo.pots.map((potResult, i) => (
+              {sd.pots.map((potResult, i) => (
                 <div key={i} className="flex items-center justify-between text-xs py-0.5 gap-2">
                   <span className="text-slate-300 truncate">
-                    {state.showdownInfo!.pots.length > 1 ? `${i === 0 ? 'Main pot' : `Side pot ${i}`} · ` : ''}
-                    {potResult.winnerSeats
-                      .map((s) => (s === 0 ? 'You' : state.players[s].name))
-                      .join(' & ')}
+                    <span className={cn('font-semibold', i === 0 ? 'text-amber-200/90' : 'text-orange-200/90')}>
+                      {sd.pots.length > 1 ? (i === 0 ? 'Main pot' : `Side pot ${i}`) : 'Pot'}
+                    </span>
+                    {sd.pots.length > 1 && (
+                      <span className="text-slate-500 hidden sm:inline">
+                        {' '}({potResult.eligibleSeats
+                          .map((s) => (s === 0 ? 'You' : state.players[s].name))
+                          .join(', ')})
+                      </span>
+                    )}
+                    {' — '}
+                    {potResult.winnerSeats.map((s) => (s === 0 ? 'You' : state.players[s].name)).join(' & ')}
                   </span>
                   <span className="text-yellow-300 font-mono font-bold whitespace-nowrap">
                     {potResult.amount.toLocaleString()}
-                    {state.showdownInfo!.foldWin ? '' : <span className="text-slate-500 font-normal"> · {potResult.handName}</span>}
+                    {!sd.foldWin && <span className="text-slate-500 font-normal"> · {potResult.handName}</span>}
                   </span>
                 </div>
               ))}

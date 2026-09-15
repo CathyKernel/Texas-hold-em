@@ -21,6 +21,7 @@ export function Seat({
   isThinking,
   lastAction,
   revealCards,
+  handName,
   wonAmount,
   isHuman,
   compact,
@@ -31,6 +32,7 @@ export function Seat({
   isThinking: boolean;
   lastAction: string | null;
   revealCards?: number[];
+  handName?: string;
   wonAmount?: number;
   isHuman: boolean;
   compact?: boolean;
@@ -44,11 +46,13 @@ export function Seat({
   const busted = player.status === 'busted';
   const showCards = player.hole.length === 2 && (isHuman || revealCards !== undefined);
   const cards = revealCards ?? player.hole;
+  // Show hand-strength badge only when cards are revealed (handover) and player was live
+  const revealedLive = revealCards !== undefined && !folded && !busted;
 
   return (
     <div
       className={cn(
-        'absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1 transition-opacity duration-300',
+        'flex flex-col items-center gap-1 transition-opacity duration-300',
         folded && 'opacity-45',
         busted && 'opacity-30',
         wonAmount !== undefined && wonAmount > 0 && 'z-20',
@@ -68,12 +72,23 @@ export function Seat({
             </>
           )
         )}
+        {/* Hand name badge at showdown */}
+        {revealedLive && handName && (
+          <span className={cn(
+            'ml-1 whitespace-nowrap rounded-md border px-1.5 py-0.5 text-[9px] font-bold leading-tight',
+            wonAmount && wonAmount > 0
+              ? 'border-yellow-400/60 bg-yellow-400/15 text-yellow-200'
+              : 'border-white/15 bg-slate-900/80 text-slate-400',
+          )}>
+            {handName}
+          </span>
+        )}
       </div>
 
       {/* Player plate */}
       <div
         className={cn(
-          'relative w-32 sm:w-36 rounded-lg border px-2 py-1.5 backdrop-blur-sm',
+          'relative w-32 sm:w-44 rounded-lg border px-2 py-1.5 backdrop-blur-sm',
           'bg-slate-900/85 shadow-lg',
           isActor ? 'border-amber-400 ring-2 ring-amber-400/40 animate-pulse-slow' : 'border-white/10',
           wonAmount !== undefined && wonAmount > 0 && 'border-yellow-400 ring-2 ring-yellow-400/60',
@@ -84,7 +99,7 @@ export function Seat({
             <span className="scale-90">{meta.icon}</span>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[11px] font-semibold text-slate-100 leading-tight">{isHuman ? 'You' : player.name}</div>
+            <div className="truncate text-[10px] sm:text-[11px] font-semibold text-slate-100 leading-tight" title={isHuman ? 'You' : player.name}>{isHuman ? 'You' : player.name}</div>
             <div className="text-[10px] text-amber-300/90 font-mono leading-tight">
               {player.stack.toLocaleString()} <span className="text-slate-500">chips</span>
             </div>

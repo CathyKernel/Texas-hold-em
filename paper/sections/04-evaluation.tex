@@ -24,10 +24,10 @@ W_i \;=\;{}& \mathbf{1}\{\operatorname{score}(h \cup r_i) > \operatorname{score}
 where $o_i$ is the sampled opponent holding, $r_i$ the sampled board completion, and a tie splits the pot among the $m_i + 1$ tied hands.
 
 \begin{proposition}\label{prop:mc}
-$\hat e_n$ is an unbiased estimator of $e$ with $\Var(\hat e_n) = e(1-e)/n$. Consequently $\SE(\hat e_n) = \sqrt{e(1-e)/n} \le \tfrac{1}{2\sqrt n}$, and by the de Moivre--Laplace central limit theorem an asymptotic $95\%$ confidence interval is $\hat e_n \pm 1.96\,\sqrt{\hat e_n(1-\hat e_n)/n}$.
+$\hat e_n$ is an unbiased estimator of $e$ with $\Var(\hat e_n) \le e(1-e)/n$, with equality when no ties occur. Consequently $\SE(\hat e_n) \le \sqrt{e(1-e)/n} \le \tfrac{1}{2\sqrt n}$, and by the de Moivre--Laplace central limit theorem an asymptotic $95\%$ confidence interval is $\hat e_n \pm 1.96\,\sqrt{\hat e_n(1-\hat e_n)/n}$.
 \end{proposition}
 \begin{proof}
-Each $W_i$ is an independent draw of the random variable $W = \mathbf{1}\{\text{win}\} + \text{(fractional tie)}$, whose mean is $e$ by construction of the uniform sampling measure; ties contribute fractional mass so that $\E[W]$ equals the exact split-pot equity. The variance of a mean of $n$ i.i.d.\ bounded variables in $[0,1]$ with success probability $e$ is $e(1-e)/n$, maximised at $e = 1/2$.
+Each $W_i$ is an independent draw of the random variable $W = \mathbf{1}\{\text{win}\} + \text{(fractional tie)}$, whose mean is $e$ by construction of the uniform sampling measure; ties contribute fractional mass so that $\E[W]$ equals the exact split-pot equity. Since $W \in [0,1]$ with $\E[W] = e$, the Bhatia--Davis bound gives $\Var(W) \le e(1-e)$, with equality exactly when $W$ is $\{0,1\}$-valued (no fractional ties); hence $\Var(\hat e_n) \le e(1-e)/n$, maximised at $e = 1/2$.
 \end{proof}
 
 The $1/\sqrt{n}$ decay is the governing constraint on every sampling-based poker agent: doubling precision quadruples the simulation budget. Figure~\ref{fig:mcprecision} plots the standard error \eqref{prop:mc} against $n$ and marks the two budgets used by our implementation: $n = 300$ for batch (tournament) play, giving $\SE \approx 2.9$ equity points, and $n = 1500$ for interactive play with a 220\,ms time budget, giving $\SE \approx 1.3$ points. The practical reading is sobering: even $1{,}500$ runouts cannot distinguish a $52\%$ equity from a $49\%$ equity at $95\%$ confidence, yet such margins decide most real bets. Variance-reduction techniques (antithetic pairing of high/low runouts, stratified sampling of opponent hands by canonical class) can shave constant factors, but the square-root wall is information-theoretic: an agent that wants sharper beliefs must either enumerate (exactly, at combinatorial cost) or \emph{condition on fewer unknowns}---which is precisely what the abstraction machinery of Section~\ref{sec:cfr} achieves by design.
@@ -35,7 +35,7 @@ The $1/\sqrt{n}$ decay is the governing constraint on every sampling-based poker
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.82\textwidth]{figures/mc_precision.png}
-\caption{Standard error of the Monte Carlo equity estimator \eqref{eq:mcest} as a function of the number of simulated runouts, for true equities $e \in \{0.5, 0.25, 0.1\}$. The vertical lines mark the two simulation budgets of our Monte Carlo agent: the batch budget $n = 300$ (worst-case $\SE \approx 2.9$ percentage points) and the interactive budget $n = 1500$ ($\SE \approx 1.3$ points).}
+\caption{Standard error of the Monte Carlo equity estimator \eqref{eq:mcest} as a function of the number of simulated runouts, for true equities $e \in \{0.5, 0.25, 0.1\}$ (the no-tie worst case). The vertical lines mark the two simulation budgets of our Monte Carlo agent: the batch budget $n = 300$ (worst-case $\SE \approx 2.9$ percentage points) and the interactive budget $n = 1500$ ($\SE \approx 1.3$ points).}
 \label{fig:mcprecision}
 \end{figure}
 
@@ -45,20 +45,29 @@ The oldest and still most common commercial paradigm encodes human expert knowle
 
 \begin{algorithm}[htbp]
 \DontPrintSemicolon
-\caption{Rule-based decision at one betting node (our \emph{rule agent}).}\label{alg:rule}
+\caption{Rule-based decision at one betting node (our \emph{rule agent}; rules are priority-ordered, first match fires).}\label{alg:rule}
 \KwIn{state (hole, board, pot $P$, to-call $b$, position $\rho$, opponents $m$), random draw $r \sim U(0,1)$}
 \KwOut{action $\in$ \{fold, check/call, raise $\tfrac12$-pot, raise pot\}}
 $s \leftarrow$ preflop-equity lookup or made-hand percentile $+$ draw bonuses\;
 \If{$b = 0$}{
-  \eIf{$s \ge \theta_{\text{open}}(\rho)$}{
+  \uIf{preflop \textbf{and} $s \ge \theta_{\text{open}}(\rho)$}{
     \eIf{$s \ge 0.62$ \textbf{and} $r < 0.35$}{emit pot-sized raise}{emit half-pot raise}\;
-  }{check (fold-option hands check behind)\;}
+  }
+  \uElseIf{postflop \textbf{and} $s \ge 0.84$}{
+    \eIf{$r < 0.4$}{emit pot-sized raise}{emit half-pot raise}\;
+  }
+  \uElseIf{postflop \textbf{and} $s \ge 0.72$}{emit half-pot raise (value bet)\;}
+  \uElseIf{postflop \textbf{and} $s \ge 0.56$ \textbf{and} $r < 0.45$}{emit half-pot raise (probe)\;}
+  \uElseIf{postflop \textbf{and} $\rho = \mathrm{LP}$ \textbf{and} $s < 0.45$ \textbf{and} $r < 0.16$}{emit half-pot raise (bluff)\;}
+  \Else{check (fold-option hands check behind)\;}
 }
 \Else{
   $\theta \leftarrow b/(P+b) + 0.03 + 0.025\min(3,m) - \mathbb{1}[\rho \in \{\text{SB},\text{BB}\}]\cdot 0.02$\;
-  \If{$s \ge 0.68$ \textbf{and} raises this street $< 3$ \textbf{and} $r < 0.55$}{emit 3-bet\;}
+  \If{preflop \textbf{and} $s \ge 0.68$ \textbf{and} raises this street $< 3$ \textbf{and} $r < 0.55$}{emit 3-bet\;}
+  \If{postflop \textbf{and} $s \ge 0.80$ \textbf{and} raises this street $< 2$ \textbf{and} $r < 0.4$}{emit raise\;}
   \If{$s \ge \theta$}{call\;}
-  \If{$\theta < 0.15$ \textbf{and} $s \ge 0.42$}{call (cheap peeling / set-mining)\;}
+  \If{$b/(P+b) < 0.15$ \textbf{and} $s \ge 0.42$}{call (cheap peeling / set-mining)\;}
+  \If{$b/(P+b) < 0.22$ \textbf{and} $s \ge b/(P+b) - 0.04$ \textbf{and} $r < 0.5$}{call (implied odds)\;}
   \Return fold\;
 }
 \end{algorithm}
