@@ -8,9 +8,9 @@ This repository contains a complete, self-contained poker AI research project:
 2. **Five AI paradigms** playable at the table, each with a *transparent reasoning panel* so you can see exactly why every agent acted as it did: rule-based heuristics, Monte-Carlo equity estimation, tabular CFR (blueprint abstraction), Deep CFR (function approximation), and tabular Q-learning.
 3. **Training pipelines** for every learned agent, reproducible from the command line.
 4. **A 100,000-hand tournament** benchmark across all paradigms, with statistically sound methodology (per-hand stack reset, button-relative seat rotation, blind-corrected accounting, empirical standard errors).
-5. **A 27-page academic paper** (LaTeX source + compiled PDF): *The Mathematics and Algorithms of Texas Hold'em Poker* — probability, game theory, CFR with full derivations, reinforcement learning, and the experimental results above.
+5. **A 28-page academic paper** (LaTeX source + compiled PDF): *The Mathematics and Algorithms of Texas Hold'em Poker* — probability, game theory, CFR with full derivations, reinforcement learning, and the experimental results above.
 
-![Desktop app](docs/screenshots/app-desktop.png)
+![Desktop app — six AI seats around the table, flop dealt, live AI insight panels on the right](docs/screenshots/app-desktop.png)
 
 ## Results at a glance
 
@@ -50,7 +50,7 @@ The app ships with **pre-trained artifacts** in [`public/ai/`](public/ai/) — t
 
 Pick any of the 5 AI types for each opponent seat, deal, and inspect every agent's reasoning in real time — strategy mixes, equity estimates, Q-values, and neural advantages are all rendered live in the insight panels.
 
-![Mobile](docs/screenshots/app-mobile.png)
+![Mobile — responsive table with all six seats, community cards, and the action bar](docs/screenshots/app-mobile.png)
 
 ## Repository layout
 
